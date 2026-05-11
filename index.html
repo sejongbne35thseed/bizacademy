@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>비즈 아카데미 상담 예약</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { seed: { DEFAULT: '#28C158', dark: '#1EA348', light: '#E8F9EE' } } } }
+    }
+  </script>
+  <style>
+    .day-btn input[type="radio"],
+    .time-btn input[type="radio"] { display: none; }
+
+    .day-btn label, .time-btn label {
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; border: 2px solid #D1D5DB; border-radius: 0.75rem;
+      padding: 0.875rem 1.25rem; font-weight: 600; transition: all .2s; user-select: none;
+    }
+    .day-btn input:checked + label,
+    .time-btn input:checked + label {
+      background-color: #28C158; border-color: #28C158; color: #fff;
+      box-shadow: 0 4px 14px rgba(40,193,88,.35);
+    }
+    .day-btn label:hover, .time-btn label:hover { border-color: #28C158; color: #28C158; }
+    .day-btn input:checked + label:hover,
+    .time-btn input:checked + label:hover { color: #fff; }
+
+    /* 마감 슬롯 */
+    .time-btn.taken label {
+      background-color: #F3F4F6; border-color: #E5E7EB;
+      color: #9CA3AF; cursor: not-allowed;
+    }
+    .time-btn.taken label:hover { border-color: #E5E7EB; color: #9CA3AF; }
+    .time-btn.taken input { pointer-events: none; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
+      border-radius: 50%; animation: spin .7s linear infinite; display: inline-block;
+    }
+    .spinner-gray {
+      width: 18px; height: 18px;
+      border: 2px solid #D1D5DB; border-top-color: #28C158;
+      border-radius: 50%; animation: spin .7s linear infinite; display: inline-block;
+    }
+    input:focus { outline: none; border-color: #28C158 !important; box-shadow: 0 0 0 3px rgba(40,193,88,.2); }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    .fade-in { animation: fadeIn .4s ease both; }
+    .fade-up  { animation: fadeIn .25s ease both; }
+    .tab-btn { border-bottom: 3px solid transparent; transition: all .2s; }
+    .tab-btn.active { border-bottom-color: #28C158; color: #28C158; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-seed-light via-white to-emerald-50 flex items-center justify-center p-4 py-10">
+
+  <div class="w-full max-w-lg bg-white rounded-3xl shadow-xl overflow-hidden fade-in">
+
+    <!-- 헤더 -->
+    <div class="bg-gradient-to-r from-seed to-emerald-400 px-8 py-7 text-white">
+      <p class="text-sm font-semibold tracking-widest uppercase opacity-80 mb-1">Sejong Univ. SEED</p>
+      <h1 class="text-2xl font-extrabold leading-tight">비즈 아카데미</h1>
+      <p class="text-sm mt-1 opacity-90">1:1 교수 상담 예약 신청</p>
+    </div>
+
+    <!-- 탭 -->
+    <div class="flex border-b border-gray-100">
+      <button id="tab-new" onclick="switchTab('new')"
+        class="tab-btn active flex-1 py-3.5 text-sm font-semibold text-seed">신규 예약</button>
+      <button id="tab-manage" onclick="switchTab('manage')"
+        class="tab-btn flex-1 py-3.5 text-sm font-semibold text-gray-400">예약 조회 / 관리</button>
+    </div>
+
+    <!-- ══ 탭 1: 신규 예약 ══ -->
+    <div id="panel-new" class="px-8 py-7">
+      <form id="reservationForm" class="space-y-5" novalidate>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">이름 <span class="text-red-500">*</span></label>
+          <input id="name" type="text" placeholder="홍길동"
+            class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm transition-colors" required />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">학번 <span class="text-red-500">*</span></label>
+          <input id="studentId" type="text" placeholder="22011234" inputmode="numeric"
+            class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm transition-colors" required />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">연락처 <span class="text-red-500">*</span></label>
+          <input id="contact" type="tel" placeholder="010-0000-0000"
+            class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm transition-colors" required />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">이메일 <span class="text-red-500">*</span></label>
+          <input id="email" type="email" placeholder="example@sejong.ac.kr"
+            class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm transition-colors" required />
+        </div>
+
+        <!-- 희망 요일 -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">희망 요일 <span class="text-red-500">*</span></label>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="day-btn">
+              <input type="radio" name="day" id="dayTue" value="화요일" />
+              <label for="dayTue" class="flex-col text-sm">
+                <span class="text-base">화요일</span>
+                <span class="text-xs font-normal opacity-70 mt-0.5">허재영 교수님</span>
+              </label>
+            </div>
+            <div class="day-btn">
+              <input type="radio" name="day" id="dayWed" value="수요일" />
+              <label for="dayWed" class="flex-col text-sm">
+                <span class="text-base">수요일</span>
+                <span class="text-xs font-normal opacity-70 mt-0.5">김용관 대우교수님</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- 희망 날짜 -->
+        <div id="dateSection" class="hidden fade-up">
+          <label class="block text-sm font-semibold text-gray-700 mb-2">희망 날짜 <span class="text-red-500">*</span></label>
+          <div id="dateGrid" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- 희망 시간 -->
+        <div id="timeSection" class="hidden fade-up">
+          <label class="block text-sm font-semibold text-gray-700 mb-2">
+            희망 시간 <span class="text-red-500">*</span>
+            <span id="professorBadge" class="ml-2 text-xs font-medium text-seed bg-seed-light px-2 py-0.5 rounded-full"></span>
+          </label>
+          <!-- 로딩 -->
+          <div id="timeLoadingMsg" class="hidden text-xs text-gray-400 flex items-center gap-1.5 mb-2">
+            <span class="spinner-gray"></span> 잔여 슬롯 확인 중...
+          </div>
+          <!-- 오류 -->
+          <div id="timeErrorMsg" class="hidden bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-2 flex items-center justify-between">
+            <span class="text-xs text-red-600">슬롯 정보를 불러오지 못했습니다. Apps Script 배포를 확인해 주세요.</span>
+            <button type="button" onclick="retryNewSlot()" class="text-xs font-semibold text-red-600 underline ml-3 shrink-0">다시 시도</button>
+          </div>
+          <div id="timeGrid" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- 안내 -->
+        <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-700 leading-relaxed">
+          ⚠️ 예약 완료 후 입력하신 이메일로 사전 프로필 양식과 안내 메일이 발송됩니다.<br>
+          상담 불참 시 추후 프로그램 참여에 제한이 있을 수 있습니다.
+        </div>
+
+        <button id="submitBtn" type="submit"
+          class="w-full bg-seed hover:bg-seed-dark text-white font-bold py-3.5 rounded-xl text-sm transition-all active:scale-95 shadow-md shadow-seed/30 flex items-center justify-center gap-2">
+          <span id="btnText">예약 신청하기</span>
+          <span id="btnSpinner" class="spinner hidden"></span>
+        </button>
+
+      </form>
+    </div>
+
+    <!-- ══ 탭 2: 예약 관리 ══ -->
+    <div id="panel-manage" class="hidden px-8 py-7">
+
+      <!-- 조회 폼 -->
+      <div id="lookupSection">
+        <p class="text-sm text-gray-500 mb-5 leading-relaxed">
+          예약 시 사용한 <b>학번</b>과 <b>이메일</b>을 입력하면 예약 내역을 조회할 수 있습니다.
+        </p>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">학번 <span class="text-red-500">*</span></label>
+            <input id="lookupStudentId" type="text" placeholder="22011234" inputmode="numeric"
+              class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm transition-colors" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">이메일 <span class="text-red-500">*</span></label>
+            <input id="lookupEmail" type="email" placeholder="example@sejong.ac.kr"
+              class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm transition-colors" />
+          </div>
+          <button id="lookupBtn" onclick="handleLookup()"
+            class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2">
+            <span id="lookupBtnText">예약 조회하기</span>
+            <span id="lookupSpinner" class="spinner hidden"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 조회 결과 -->
+      <div id="detailSection" class="hidden fade-up">
+        <div class="bg-seed-light border border-seed/30 rounded-2xl p-5 mb-5">
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-xs font-bold text-seed tracking-wider">📋 예약 정보</p>
+            <span class="text-xs bg-seed text-white px-2 py-0.5 rounded-full font-semibold">예약 완료</span>
+          </div>
+          <table class="w-full text-sm text-gray-700">
+            <tr><td class="py-1 text-gray-400 w-20">이름</td><td id="d-name" class="py-1 font-semibold"></td></tr>
+            <tr><td class="py-1 text-gray-400">학번</td><td id="d-sid" class="py-1 font-semibold"></td></tr>
+            <tr><td class="py-1 text-gray-400">교수</td><td id="d-prof" class="py-1 font-semibold"></td></tr>
+            <tr><td class="py-1 text-gray-400">일시</td><td id="d-datetime" class="py-1 font-semibold"></td></tr>
+            <tr><td class="py-1 text-gray-400">장소</td><td id="d-location" class="py-1 font-semibold"></td></tr>
+          </table>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-5">
+          <button onclick="confirmCancel()"
+            class="py-3 rounded-xl border-2 border-red-300 text-red-500 font-semibold text-sm hover:bg-red-50 transition-colors">
+            예약 취소
+          </button>
+          <button onclick="toggleModifyForm()"
+            class="py-3 rounded-xl bg-seed text-white font-semibold text-sm hover:bg-seed-dark transition-colors">
+            예약 변경
+          </button>
+        </div>
+
+        <!-- 변경 폼 -->
+        <div id="modifyForm" class="hidden border-t border-gray-100 pt-5 space-y-4 fade-up">
+          <p class="text-sm font-semibold text-gray-700">변경할 일정 선택</p>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">희망 요일</label>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="day-btn">
+                <input type="radio" name="modDay" id="modDayTue" value="화요일" />
+                <label for="modDayTue" class="flex-col text-sm">
+                  <span class="text-base">화요일</span>
+                  <span class="text-xs font-normal opacity-70 mt-0.5">허재영 교수님</span>
+                </label>
+              </div>
+              <div class="day-btn">
+                <input type="radio" name="modDay" id="modDayWed" value="수요일" />
+                <label for="modDayWed" class="flex-col text-sm">
+                  <span class="text-base">수요일</span>
+                  <span class="text-xs font-normal opacity-70 mt-0.5">김용관 대우교수님</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div id="modDateSection" class="hidden">
+            <label class="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">희망 날짜</label>
+            <div id="modDateGrid" class="grid grid-cols-2 gap-3"></div>
+          </div>
+          <div id="modTimeSection" class="hidden">
+            <label class="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">희망 시간</label>
+            <div id="modTimeLoadingMsg" class="hidden text-xs text-gray-400 flex items-center gap-1.5 mb-2">
+              <span class="spinner-gray"></span> 잔여 슬롯 확인 중...
+            </div>
+            <div id="modTimeErrorMsg" class="hidden bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-2 flex items-center justify-between">
+              <span class="text-xs text-red-600">슬롯 정보를 불러오지 못했습니다.</span>
+              <button type="button" onclick="retryModSlot()" class="text-xs font-semibold text-red-600 underline ml-3 shrink-0">다시 시도</button>
+            </div>
+            <div id="modTimeGrid" class="grid grid-cols-2 gap-3"></div>
+          </div>
+          <button id="modifySubmitBtn" onclick="handleModify()"
+            class="w-full bg-seed hover:bg-seed-dark text-white font-bold py-3.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2">
+            <span id="modifyBtnText">변경 완료</span>
+            <span id="modifySpinner" class="spinner hidden"></span>
+          </button>
+        </div>
+
+        <button onclick="resetManage()" class="w-full mt-2 text-xs text-gray-400 hover:text-gray-600 py-2 transition-colors">
+          ← 다시 조회하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 성공 모달 -->
+  <div id="successModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center fade-in">
+      <div class="w-16 h-16 bg-seed-light rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg class="w-8 h-8 text-seed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+        </svg>
+      </div>
+      <h2 class="text-xl font-extrabold text-gray-800 mb-2" id="successTitle">완료!</h2>
+      <p class="text-sm text-gray-500 leading-relaxed mb-6" id="successMessage"></p>
+      <button onclick="closeModal('successModal')"
+        class="w-full bg-seed text-white font-bold py-3 rounded-xl text-sm hover:bg-seed-dark transition-colors">확인</button>
+    </div>
+  </div>
+
+  <!-- 오류 모달 -->
+  <div id="errorModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center fade-in">
+      <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <h2 class="text-xl font-extrabold text-gray-800 mb-2">안내</h2>
+      <p id="errorMessage" class="text-sm text-gray-500 leading-relaxed mb-6"></p>
+      <button onclick="closeModal('errorModal')"
+        class="w-full bg-red-500 text-white font-bold py-3 rounded-xl text-sm hover:bg-red-600 transition-colors">닫기</button>
+    </div>
+  </div>
+
+  <!-- 취소 확인 모달 -->
+  <div id="cancelModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center fade-in">
+      <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        </svg>
+      </div>
+      <h2 class="text-xl font-extrabold text-gray-800 mb-2">예약을 취소할까요?</h2>
+      <p class="text-sm text-gray-500 leading-relaxed mb-6">취소 후에는 되돌릴 수 없습니다.<br>취소 확인 메일이 발송됩니다.</p>
+      <div class="grid grid-cols-2 gap-3">
+        <button onclick="closeModal('cancelModal')"
+          class="py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors">아니요</button>
+        <button id="cancelConfirmBtn" onclick="handleCancel()"
+          class="py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition-colors flex items-center justify-center gap-1.5">
+          <span id="cancelBtnText">취소하기</span>
+          <span id="cancelSpinner" class="spinner hidden"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── 설정 ────────────────────────────────────────────────────────────────
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxByGNsqX9WJu9sjDYexixatDKiYYE6ZorQgKFyPrjh-zMTwGNB0htEcNLnSRP_850a/exec';
+
+    const TIME_OPTIONS = {
+      '화요일': ['13:30', '15:00'],
+      '수요일': ['09:00', '10:30', '13:30', '15:00'],
+    };
+    const KO_DAYS = ['일','월','화','수','목','금','토'];
+
+    let currentReservation = null;
+    let _newSlotDate = null, _newSlotDay = null;
+    let _modSlotDate = null, _modSlotDay = null;
+
+    // ── 서버 통신 (GET만 사용 — CORS 완전 허용) ──────────────────────────────
+    async function callServer(params) {
+      params._t = Date.now(); // 캐시 방지
+      const qs  = new URLSearchParams(params).toString();
+      const res = await fetch(SCRIPT_URL + '?' + qs, { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }
+
+    // ── 탭 전환 ──────────────────────────────────────────────────────────────
+    function switchTab(tab) {
+      ['new','manage'].forEach(t => {
+        document.getElementById('panel-' + t).classList.toggle('hidden', t !== tab);
+        const btn = document.getElementById('tab-' + t);
+        btn.classList.toggle('active',     t === tab);
+        btn.classList.toggle('text-seed',  t === tab);
+        btn.classList.toggle('text-gray-400', t !== tab);
+      });
+    }
+
+    // ── 날짜 유틸 ────────────────────────────────────────────────────────────
+    function getUpcomingDates(targetDow) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dow = today.getDay();
+      const thisMonday = new Date(today);
+      thisMonday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+      const nextMonday = new Date(thisMonday);
+      nextMonday.setDate(thisMonday.getDate() + 7);
+      const result = [];
+      const d = new Date(nextMonday);
+      while (result.length < 4) {
+        if (d.getDay() === targetDow) result.push(new Date(d));
+        d.setDate(d.getDate() + 1);
+      }
+      return result;
+    }
+
+    function toISODate(d) {
+      return d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+    }
+
+    function formatDateLabel(d) {
+      return `${d.getMonth() + 1}월 ${d.getDate()}일 (${KO_DAYS[d.getDay()]})`;
+    }
+
+    // ── 슬롯 조회 ────────────────────────────────────────────────────────────
+    async function fetchTakenSlots(date) {
+      try {
+        const data = await callServer({ action: 'getSlots', date });
+        if (!Array.isArray(data.takenSlots)) {
+          console.error('[getSlots] 응답 형식 오류:', data);
+          return null;
+        }
+        console.log('[getSlots]', date, '→ taken:', data.takenSlots);
+        return data.takenSlots;
+      } catch (err) {
+        console.error('[getSlots] 요청 실패:', err.message);
+        return null;
+      }
+    }
+
+    // ── 시간 그리드 렌더링 ───────────────────────────────────────────────────
+    function renderDateGrid(containerId, dates, prefix) {
+      const grid = document.getElementById(containerId);
+      grid.innerHTML = '';
+      dates.forEach((d, i) => {
+        grid.innerHTML += `
+          <div class="time-btn">
+            <input type="radio" name="${prefix}date" id="${prefix}date${i}" value="${toISODate(d)}" />
+            <label for="${prefix}date${i}" class="text-sm font-semibold text-center leading-snug">
+              ${formatDateLabel(d)}
+            </label>
+          </div>`;
+      });
+    }
+
+    function renderTimeGrid(containerId, day, takenSlots, prefix) {
+      const grid = document.getElementById(containerId);
+      grid.innerHTML = '';
+      TIME_OPTIONS[day].forEach((t, i) => {
+        const taken = takenSlots.includes(t);
+        grid.innerHTML += `
+          <div class="time-btn${taken ? ' taken' : ''}">
+            <input type="radio" name="${prefix}time" id="${prefix}time${i}" value="${t}" ${taken ? 'disabled' : ''} />
+            <label for="${prefix}time${i}" class="text-sm font-bold flex-col">
+              <span>${t}</span>
+              ${taken ? '<span style="font-size:10px;font-weight:400;margin-top:2px;">마감</span>' : ''}
+            </label>
+          </div>`;
+      });
+    }
+
+    // ── 시간 그리드 로드 공통 헬퍼 ──────────────────────────────────────────
+    async function loadTimeGrid({ date, day, gridId, loadingId, errorId, prefix }) {
+      document.getElementById(loadingId).classList.remove('hidden');
+      document.getElementById(errorId).classList.add('hidden');
+      document.getElementById(gridId).innerHTML = '';
+
+      const taken = await fetchTakenSlots(date);
+
+      document.getElementById(loadingId).classList.add('hidden');
+      if (taken === null) {
+        document.getElementById(errorId).classList.remove('hidden');
+      } else {
+        renderTimeGrid(gridId, day, taken, prefix);
+      }
+    }
+
+    async function retryNewSlot() {
+      if (!_newSlotDate || !_newSlotDay) return;
+      await loadTimeGrid({ date: _newSlotDate, day: _newSlotDay,
+        gridId: 'timeGrid', loadingId: 'timeLoadingMsg', errorId: 'timeErrorMsg', prefix: '' });
+    }
+
+    async function retryModSlot() {
+      if (!_modSlotDate || !_modSlotDay) return;
+      await loadTimeGrid({ date: _modSlotDate, day: _modSlotDay,
+        gridId: 'modTimeGrid', loadingId: 'modTimeLoadingMsg', errorId: 'modTimeErrorMsg', prefix: 'mod' });
+    }
+
+    // ── 탭 1: 신규 예약 ──────────────────────────────────────────────────────
+
+    // 요일 선택 → 날짜 표시
+    document.querySelectorAll('input[name="day"]').forEach(radio => {
+      radio.addEventListener('change', function () {
+        const day = this.value;
+        document.getElementById('professorBadge').textContent =
+          day === '화요일' ? '허재영 교수님' : '김용관 대우교수님';
+        renderDateGrid('dateGrid', getUpcomingDates(day === '화요일' ? 2 : 3), '');
+        document.getElementById('dateSection').classList.remove('hidden');
+        document.getElementById('timeGrid').innerHTML = '';
+        document.getElementById('timeSection').classList.add('hidden');
+        _newSlotDate = null; _newSlotDay = null;
+      });
+    });
+
+    // 날짜 선택 → 슬롯 조회 후 시간 표시
+    document.getElementById('dateGrid').addEventListener('change', async function (e) {
+      if (e.target.name !== 'date') return;
+      _newSlotDate = e.target.value;
+      _newSlotDay  = document.querySelector('input[name="day"]:checked').value;
+      document.getElementById('timeSection').classList.remove('hidden');
+      await loadTimeGrid({ date: _newSlotDate, day: _newSlotDay,
+        gridId: 'timeGrid', loadingId: 'timeLoadingMsg', errorId: 'timeErrorMsg', prefix: '' });
+    });
+
+    // 폼 제출
+    document.getElementById('reservationForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const name      = document.getElementById('name').value.trim();
+      const studentId = document.getElementById('studentId').value.trim();
+      const contact   = document.getElementById('contact').value.trim();
+      const email     = document.getElementById('email').value.trim();
+      const dayEl     = document.querySelector('input[name="day"]:checked');
+      const dateEl    = document.querySelector('input[name="date"]:checked');
+      const timeEl    = document.querySelector('input[name="time"]:checked');
+
+      if (!name || !studentId || !contact || !email) return showError('모든 항목을 빠짐없이 입력해 주세요.');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('올바른 이메일 형식을 입력해 주세요.');
+      if (!dayEl)  return showError('희망 요일을 선택해 주세요.');
+      if (!dateEl) return showError('희망 날짜를 선택해 주세요.');
+      if (!timeEl) return showError('희망 시간을 선택해 주세요.');
+
+      setLoading('submitBtn', 'btnText', 'btnSpinner', true, '처리 중...');
+
+      try {
+        const result = await callServer({
+          action: 'book', name, studentId, contact, email,
+          day: dayEl.value, date: dateEl.value, time: timeEl.value
+        });
+
+        setLoading('submitBtn', 'btnText', 'btnSpinner', false, '예약 신청하기');
+
+        if (result.status === 'slotTaken') {
+          // 시간 그리드 최신 상태로 새로고침
+          await loadTimeGrid({ date: dateEl.value, day: dayEl.value,
+            gridId: 'timeGrid', loadingId: 'timeLoadingMsg', errorId: 'timeErrorMsg', prefix: '' });
+          return showError('선택하신 시간대는 이미 마감되었습니다.<br>다른 시간을 선택해 주세요.');
+        }
+        if (result.status !== 'success') {
+          return showError(result.message || '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+        }
+
+        this.reset();
+        document.getElementById('dateSection').classList.add('hidden');
+        document.getElementById('timeSection').classList.add('hidden');
+        showSuccess('예약 완료!', '상담 예약이 접수되었습니다.<br>입력하신 이메일로 안내 메일과 사전 프로필 양식이 발송됩니다.');
+
+      } catch (err) {
+        setLoading('submitBtn', 'btnText', 'btnSpinner', false, '예약 신청하기');
+        showError('서버 연결에 실패했습니다.<br>잠시 후 다시 시도해 주세요.');
+        console.error('[submit] 오류:', err.message);
+      }
+    });
+
+    // ── 탭 2: 예약 관리 ──────────────────────────────────────────────────────
+
+    async function handleLookup() {
+      const studentId = document.getElementById('lookupStudentId').value.trim();
+      const email     = document.getElementById('lookupEmail').value.trim();
+      if (!studentId || !email) return showError('학번과 이메일을 모두 입력해 주세요.');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('올바른 이메일 형식을 입력해 주세요.');
+
+      setLoading('lookupBtn', 'lookupBtnText', 'lookupSpinner', true, '조회 중...');
+      try {
+        const data = await callServer({ action: 'lookup', studentId, email });
+        setLoading('lookupBtn', 'lookupBtnText', 'lookupSpinner', false, '예약 조회하기');
+        if (data.status === 'notFound') return showError('예약 내역을 찾을 수 없습니다.<br>학번과 이메일을 다시 확인해 주세요.');
+        currentReservation = data;
+        showReservationDetail(data);
+      } catch (err) {
+        setLoading('lookupBtn', 'lookupBtnText', 'lookupSpinner', false, '예약 조회하기');
+        showError('조회 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+      }
+    }
+
+    function showReservationDetail(r) {
+      const parts   = String(r.date).split('-');
+      const dateStr = `${parts[0]}년 ${parseInt(parts[1])}월 ${parseInt(parts[2])}일 (${r.day})`;
+      document.getElementById('d-name').textContent     = r.name;
+      document.getElementById('d-sid').textContent      = r.studentId;
+      document.getElementById('d-prof').textContent     = r.professor;
+      document.getElementById('d-datetime').textContent = `${dateStr} ${r.time}`;
+      document.getElementById('d-location').textContent = r.location;
+      document.getElementById('lookupSection').classList.add('hidden');
+      document.getElementById('detailSection').classList.remove('hidden');
+      document.getElementById('modifyForm').classList.add('hidden');
+    }
+
+    function confirmCancel() { document.getElementById('cancelModal').classList.remove('hidden'); }
+
+    async function handleCancel() {
+      if (!currentReservation) return;
+      setLoading('cancelConfirmBtn', 'cancelBtnText', 'cancelSpinner', true, '취소 중...');
+      try {
+        const result = await callServer({
+          action: 'cancel',
+          studentId: currentReservation.studentId,
+          email:     currentReservation.email
+        });
+        setLoading('cancelConfirmBtn', 'cancelBtnText', 'cancelSpinner', false, '취소하기');
+        closeModal('cancelModal');
+        resetManage();
+        if (result.status === 'success') {
+          showSuccess('예약 취소 완료', '예약이 취소되었습니다.<br>취소 확인 메일이 발송됩니다.');
+        } else {
+          showError(result.message || '취소 중 오류가 발생했습니다.');
+        }
+      } catch (err) {
+        setLoading('cancelConfirmBtn', 'cancelBtnText', 'cancelSpinner', false, '취소하기');
+        closeModal('cancelModal');
+        showError('서버 연결에 실패했습니다.');
+      }
+    }
+
+    function toggleModifyForm() {
+      document.getElementById('modifyForm').classList.toggle('hidden');
+      document.querySelectorAll('input[name="modDay"]').forEach(r => r.checked = false);
+      document.getElementById('modDateSection').classList.add('hidden');
+      document.getElementById('modTimeSection').classList.add('hidden');
+    }
+
+    document.querySelectorAll('input[name="modDay"]').forEach(radio => {
+      radio.addEventListener('change', function () {
+        renderDateGrid('modDateGrid', getUpcomingDates(this.value === '화요일' ? 2 : 3), 'mod');
+        document.getElementById('modDateSection').classList.remove('hidden');
+        document.getElementById('modTimeGrid').innerHTML = '';
+        document.getElementById('modTimeSection').classList.add('hidden');
+        _modSlotDate = null; _modSlotDay = null;
+      });
+    });
+
+    document.getElementById('modDateGrid').addEventListener('change', async function (e) {
+      if (e.target.name !== 'moddate') return;
+      _modSlotDate = e.target.value;
+      _modSlotDay  = document.querySelector('input[name="modDay"]:checked').value;
+      document.getElementById('modTimeSection').classList.remove('hidden');
+      await loadTimeGrid({ date: _modSlotDate, day: _modSlotDay,
+        gridId: 'modTimeGrid', loadingId: 'modTimeLoadingMsg', errorId: 'modTimeErrorMsg', prefix: 'mod' });
+    });
+
+    async function handleModify() {
+      if (!currentReservation) return;
+      const dayEl  = document.querySelector('input[name="modDay"]:checked');
+      const dateEl = document.querySelector('input[name="moddate"]:checked');
+      const timeEl = document.querySelector('input[name="modtime"]:checked');
+      if (!dayEl)  return showError('변경할 요일을 선택해 주세요.');
+      if (!dateEl) return showError('변경할 날짜를 선택해 주세요.');
+      if (!timeEl) return showError('변경할 시간을 선택해 주세요.');
+
+      setLoading('modifySubmitBtn', 'modifyBtnText', 'modifySpinner', true, '변경 중...');
+      try {
+        const result = await callServer({
+          action:    'modify',
+          studentId: currentReservation.studentId,
+          email:     currentReservation.email,
+          day:       dayEl.value,
+          date:      dateEl.value,
+          time:      timeEl.value
+        });
+        setLoading('modifySubmitBtn', 'modifyBtnText', 'modifySpinner', false, '변경 완료');
+
+        if (result.status === 'slotTaken') {
+          await loadTimeGrid({ date: dateEl.value, day: dayEl.value,
+            gridId: 'modTimeGrid', loadingId: 'modTimeLoadingMsg', errorId: 'modTimeErrorMsg', prefix: 'mod' });
+          return showError('선택하신 시간대는 이미 마감되었습니다.<br>다른 시간을 선택해 주세요.');
+        }
+        if (result.status !== 'success') {
+          return showError(result.message || '변경 중 오류가 발생했습니다.');
+        }
+        resetManage();
+        showSuccess('예약 변경 완료', '예약이 변경되었습니다.<br>변경 확인 메일이 발송됩니다.');
+      } catch (err) {
+        setLoading('modifySubmitBtn', 'modifyBtnText', 'modifySpinner', false, '변경 완료');
+        showError('서버 연결에 실패했습니다.');
+      }
+    }
+
+    function resetManage() {
+      currentReservation = null;
+      document.getElementById('lookupStudentId').value = '';
+      document.getElementById('lookupEmail').value = '';
+      document.getElementById('lookupSection').classList.remove('hidden');
+      document.getElementById('detailSection').classList.add('hidden');
+    }
+
+    // ── 공통 유틸 ────────────────────────────────────────────────────────────
+    function setLoading(btnId, textId, spinnerId, on, label) {
+      document.getElementById(btnId).disabled = on;
+      document.getElementById(textId).textContent = label;
+      document.getElementById(spinnerId).classList.toggle('hidden', !on);
+    }
+    function showSuccess(title, message) {
+      document.getElementById('successTitle').textContent = title;
+      document.getElementById('successMessage').innerHTML = message;
+      document.getElementById('successModal').classList.remove('hidden');
+    }
+    function showError(msg) {
+      document.getElementById('errorMessage').innerHTML = msg;
+      document.getElementById('errorModal').classList.remove('hidden');
+    }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    ['successModal','errorModal','cancelModal'].forEach(id => {
+      document.getElementById(id).addEventListener('click', function(e) {
+        if (e.target === this) closeModal(id);
+      });
+    });
+  </script>
+</body>
+</html>
