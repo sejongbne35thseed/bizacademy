@@ -127,7 +127,7 @@
               <p class="text-sm text-gray-400">클릭하거나 파일을 드래그하세요</p>
               <p class="text-xs text-gray-300 mt-0.5">최대 10MB</p>
             </div>
-            <div id="fileZoneSelected" class="hidden flex items-center justify-center gap-2">
+            <div id="fileZoneSelected" style="display:none" class="flex items-center justify-center gap-2">
               <svg class="w-5 h-5 text-seed shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
               </svg>
@@ -140,7 +140,7 @@
               </button>
             </div>
           </div>
-          <p id="fileUploadProgress" class="hidden text-xs text-seed mt-1.5 flex items-center gap-1.5">
+          <p id="fileUploadProgress" style="display:none" class="text-xs text-seed mt-1.5 flex items-center gap-1.5">
             <span class="spinner-gray" style="width:14px;height:14px;"></span> 파일 업로드 중...
           </p>
         </div>
@@ -533,17 +533,17 @@
       if (file.size > 10 * 1024 * 1024) { showError('파일 크기는 최대 10MB까지 허용됩니다.'); clearFile(); return; }
       _selectedFile = file;
       document.getElementById('selectedFileName').textContent = file.name;
-      document.getElementById('fileZonePlaceholder').classList.add('hidden');
-      document.getElementById('fileZoneSelected').classList.remove('hidden');
+      document.getElementById('fileZonePlaceholder').style.display = 'none';
+      document.getElementById('fileZoneSelected').style.display = 'flex';
       document.getElementById('fileZone').classList.add('has-file');
     }
 
     function clearFile(e) {
-      if (e) e.stopPropagation();
+      if (e) { e.stopPropagation(); e.preventDefault(); }
       _selectedFile = null;
       document.getElementById('profileFile').value = '';
-      document.getElementById('fileZonePlaceholder').classList.remove('hidden');
-      document.getElementById('fileZoneSelected').classList.add('hidden');
+      document.getElementById('fileZonePlaceholder').style.display = '';
+      document.getElementById('fileZoneSelected').style.display = 'none';
       document.getElementById('fileZone').classList.remove('has-file');
     }
 
@@ -610,7 +610,7 @@
 
       // 1단계: 파일 업로드
       setLoading('submitBtn', 'btnText', 'btnSpinner', true, '파일 업로드 중...');
-      document.getElementById('fileUploadProgress').classList.remove('hidden');
+      document.getElementById('fileUploadProgress').style.display = 'flex';
 
       let fileId = '', fileName = '';
       try {
@@ -618,7 +618,7 @@
         fileId   = uploadResult.fileId   || '';
         fileName = uploadResult.fileName || _selectedFile.name;
       } catch (err) {
-        document.getElementById('fileUploadProgress').classList.add('hidden');
+        document.getElementById('fileUploadProgress').style.display = 'none';
         setLoading('submitBtn', 'btnText', 'btnSpinner', false, '예약 신청하기');
         showError('파일 업로드에 실패했습니다.<br>파일을 확인하고 다시 시도해 주세요.');
         console.error('[upload] 오류:', err.message);
@@ -626,7 +626,7 @@
       }
 
       // 2단계: 예약 등록
-      document.getElementById('fileUploadProgress').classList.add('hidden');
+      document.getElementById('fileUploadProgress').style.display = 'none';
       setLoading('submitBtn', 'btnText', 'btnSpinner', true, '예약 처리 중...');
 
       try {
