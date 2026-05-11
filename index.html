@@ -48,6 +48,16 @@
       border-radius: 50%; animation: spin .7s linear infinite; display: inline-block;
     }
     input:focus { outline: none; border-color: #28C158 !important; box-shadow: 0 0 0 3px rgba(40,193,88,.2); }
+
+    /* 파일 업로드 존 */
+    .file-zone {
+      border: 2px dashed #D1D5DB; border-radius: 0.75rem;
+      padding: 1.25rem; text-align: center; cursor: pointer;
+      transition: all .2s; background: #FAFAFA;
+    }
+    .file-zone:hover, .file-zone.drag-over { border-color: #28C158; background: #E8F9EE; }
+    .file-zone.has-file { border-color: #28C158; border-style: solid; background: #E8F9EE; }
+    .file-zone input[type="file"] { display: none; }
     @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
     .fade-in { animation: fadeIn .4s ease both; }
     .fade-up  { animation: fadeIn .25s ease both; }
@@ -99,6 +109,42 @@
             class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm transition-colors" required />
         </div>
 
+        <!-- 사전 프로필 파일 업로드 -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+            사전 프로필 <span class="text-red-500">*</span>
+            <span class="text-xs font-normal text-gray-400 ml-1">(.pdf, .hwp, .hwpx, .doc, .docx)</span>
+          </label>
+          <div class="file-zone" id="fileZone" onclick="document.getElementById('profileFile').click()"
+            ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+            <input type="file" id="profileFile" accept=".pdf,.hwp,.hwpx,.doc,.docx"
+              onchange="handleFileSelect(this.files[0])" />
+            <div id="fileZonePlaceholder">
+              <svg class="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              <p class="text-sm text-gray-400">클릭하거나 파일을 드래그하세요</p>
+              <p class="text-xs text-gray-300 mt-0.5">최대 10MB</p>
+            </div>
+            <div id="fileZoneSelected" class="hidden flex items-center justify-center gap-2">
+              <svg class="w-5 h-5 text-seed shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span id="selectedFileName" class="text-sm font-semibold text-seed truncate max-w-xs"></span>
+              <button type="button" onclick="clearFile(event)"
+                class="text-gray-400 hover:text-red-400 transition-colors shrink-0 ml-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <p id="fileUploadProgress" class="hidden text-xs text-seed mt-1.5 flex items-center gap-1.5">
+            <span class="spinner-gray" style="width:14px;height:14px;"></span> 파일 업로드 중...
+          </p>
+        </div>
+
         <!-- 희망 요일 -->
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-2">희망 요일 <span class="text-red-500">*</span></label>
@@ -146,7 +192,7 @@
 
         <!-- 안내 -->
         <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-700 leading-relaxed">
-          ⚠️ 예약 완료 후 입력하신 이메일로 사전 프로필 양식과 안내 메일이 발송됩니다.<br>
+          ⚠️ 사전 프로필은 신청 시 함께 제출됩니다. 예약 완료 후 입력하신 이메일로 안내 메일이 발송됩니다.<br>
           상담 불참 시 추후 프로그램 참여에 제한이 있을 수 있습니다.
         </div>
 
@@ -479,6 +525,71 @@
         gridId: 'timeGrid', loadingId: 'timeLoadingMsg', errorId: 'timeErrorMsg', prefix: '' });
     });
 
+    // ── 파일 업로드 UI ───────────────────────────────────────────────────────
+    let _selectedFile = null;
+
+    function handleFileSelect(file) {
+      if (!file) return;
+      if (file.size > 10 * 1024 * 1024) { showError('파일 크기는 최대 10MB까지 허용됩니다.'); clearFile(); return; }
+      _selectedFile = file;
+      document.getElementById('selectedFileName').textContent = file.name;
+      document.getElementById('fileZonePlaceholder').classList.add('hidden');
+      document.getElementById('fileZoneSelected').classList.remove('hidden');
+      document.getElementById('fileZone').classList.add('has-file');
+    }
+
+    function clearFile(e) {
+      if (e) e.stopPropagation();
+      _selectedFile = null;
+      document.getElementById('profileFile').value = '';
+      document.getElementById('fileZonePlaceholder').classList.remove('hidden');
+      document.getElementById('fileZoneSelected').classList.add('hidden');
+      document.getElementById('fileZone').classList.remove('has-file');
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      document.getElementById('fileZone').classList.add('drag-over');
+    }
+    function handleDragLeave(e) {
+      document.getElementById('fileZone').classList.remove('drag-over');
+    }
+    function handleDrop(e) {
+      e.preventDefault();
+      document.getElementById('fileZone').classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) handleFileSelect(file);
+    }
+
+    async function uploadFileToServer(file, name, studentId) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async function (ev) {
+          const fileData = ev.target.result; // data:mime;base64,xxxx
+          const body = JSON.stringify({
+            action: 'uploadFile',
+            name, studentId,
+            fileName: file.name,
+            fileData
+          });
+          try {
+            const res = await fetch(SCRIPT_URL, {
+              method: 'POST',
+              body,
+              headers: { 'Content-Type': 'text/plain' }
+            });
+            const data = await res.json();
+            if (data.status === 'success') resolve(data);
+            else reject(new Error(data.message || '업로드 실패'));
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = () => reject(new Error('파일 읽기 실패'));
+        reader.readAsDataURL(file);
+      });
+    }
+
     // 폼 제출
     document.getElementById('reservationForm').addEventListener('submit', async function (e) {
       e.preventDefault();
@@ -492,22 +603,42 @@
 
       if (!name || !studentId || !contact || !email) return showError('모든 항목을 빠짐없이 입력해 주세요.');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('올바른 이메일 형식을 입력해 주세요.');
+      if (!_selectedFile) return showError('사전 프로필 파일을 첨부해 주세요.');
       if (!dayEl)  return showError('희망 요일을 선택해 주세요.');
       if (!dateEl) return showError('희망 날짜를 선택해 주세요.');
       if (!timeEl) return showError('희망 시간을 선택해 주세요.');
 
-      setLoading('submitBtn', 'btnText', 'btnSpinner', true, '처리 중...');
+      // 1단계: 파일 업로드
+      setLoading('submitBtn', 'btnText', 'btnSpinner', true, '파일 업로드 중...');
+      document.getElementById('fileUploadProgress').classList.remove('hidden');
+
+      let fileId = '', fileName = '';
+      try {
+        const uploadResult = await uploadFileToServer(_selectedFile, name, studentId);
+        fileId   = uploadResult.fileId   || '';
+        fileName = uploadResult.fileName || _selectedFile.name;
+      } catch (err) {
+        document.getElementById('fileUploadProgress').classList.add('hidden');
+        setLoading('submitBtn', 'btnText', 'btnSpinner', false, '예약 신청하기');
+        showError('파일 업로드에 실패했습니다.<br>파일을 확인하고 다시 시도해 주세요.');
+        console.error('[upload] 오류:', err.message);
+        return;
+      }
+
+      // 2단계: 예약 등록
+      document.getElementById('fileUploadProgress').classList.add('hidden');
+      setLoading('submitBtn', 'btnText', 'btnSpinner', true, '예약 처리 중...');
 
       try {
         const result = await callServer({
           action: 'book', name, studentId, contact, email,
-          day: dayEl.value, date: dateEl.value, time: timeEl.value
+          day: dayEl.value, date: dateEl.value, time: timeEl.value,
+          fileId, fileName
         });
 
         setLoading('submitBtn', 'btnText', 'btnSpinner', false, '예약 신청하기');
 
         if (result.status === 'slotTaken') {
-          // 시간 그리드 최신 상태로 새로고침
           await loadTimeGrid({ date: dateEl.value, day: dayEl.value,
             gridId: 'timeGrid', loadingId: 'timeLoadingMsg', errorId: 'timeErrorMsg', prefix: '' });
           return showError('선택하신 시간대는 이미 마감되었습니다.<br>다른 시간을 선택해 주세요.');
@@ -517,9 +648,10 @@
         }
 
         this.reset();
+        clearFile();
         document.getElementById('dateSection').classList.add('hidden');
         document.getElementById('timeSection').classList.add('hidden');
-        showSuccess('예약 완료!', '상담 예약이 접수되었습니다.<br>입력하신 이메일로 안내 메일과 사전 프로필 양식이 발송됩니다.');
+        showSuccess('예약 완료!', `상담 예약이 접수되었습니다.<br>사전 프로필(<b>${fileName}</b>)이 제출되었으며,<br>입력하신 이메일로 안내 메일이 발송됩니다.`);
 
       } catch (err) {
         setLoading('submitBtn', 'btnText', 'btnSpinner', false, '예약 신청하기');
