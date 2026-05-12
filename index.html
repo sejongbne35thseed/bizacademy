@@ -681,14 +681,14 @@
       if (e.dataTransfer.files.length) addFilesToList(e.dataTransfer.files);
     }
 
-    async function uploadFileToServer(file, name, studentId) {
+    async function uploadFileToServer(file, name, studentId, date) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = async function (ev) {
           const fileData = ev.target.result; // data:mime;base64,xxxx
           const body = JSON.stringify({
             action: 'uploadFile',
-            name, studentId,
+            name, studentId, date,
             fileName: file.name,
             fileData
           });
@@ -737,7 +737,7 @@
           `파일 업로드 중... (${i + 1}/${_selectedFiles.length})`);
         progress.style.display = 'flex';
         try {
-          const result = await uploadFileToServer(f, name, studentId);
+          const result = await uploadFileToServer(f, name, studentId, dateEl.value);
           fileIds.push(result.fileId || '');
           fileNames.push(result.fileName || f.name);
         } catch (err) {
