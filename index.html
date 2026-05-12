@@ -119,10 +119,11 @@
 
         <!-- 사전 프로필 파일 업로드 -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1.5">
-            사전 프로필 <span class="text-red-500">*</span>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">
+            멘토링 파일 제출 <span class="text-red-500">*</span>
             <span class="text-xs font-normal text-gray-400 ml-1">(.pdf, .hwp, .hwpx, .doc, .docx)</span>
           </label>
+          <p class="text-xs mb-1.5" style="color:#28C158;">사전 프로필 파일을 포함한 자소서, 이력서 등</p>
           <div class="file-zone" id="fileZone" onclick="document.getElementById('profileFile').click()"
             ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
             <input type="file" id="profileFile" accept=".pdf,.hwp,.hwpx,.doc,.docx"
