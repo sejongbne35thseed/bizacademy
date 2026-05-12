@@ -60,12 +60,19 @@
     /* 파일 업로드 존 */
     .file-zone {
       border: 2px dashed #D1D5DB; border-radius: 0.75rem;
-      padding: 1.25rem; text-align: center; cursor: pointer;
+      padding: 1.25rem; text-align: center;
       transition: all .2s; background: #FAFAFA;
+      position: relative; overflow: hidden;
     }
     .file-zone:hover, .file-zone.drag-over { border-color: #28C158; background: #E8F9EE; }
     .file-zone.has-file { border-color: #28C158; border-style: solid; background: #E8F9EE; }
-    .file-zone input[type="file"] { display: none; }
+    /* 투명 input 오버레이 — 플레이스홀더 위에 깔려서 클릭을 직접 받음 */
+    #profileFile {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      opacity: 0; cursor: pointer; z-index: 5;
+    }
+    #profileFile.hidden-input { display: none; }
     @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
     .fade-in { animation: fadeIn .4s ease both; }
     .fade-up  { animation: fadeIn .25s ease both; }
@@ -124,32 +131,30 @@
             <span class="text-xs font-normal text-gray-400 ml-1">(.pdf, .hwp, .hwpx, .doc, .docx)</span>
           </label>
           <p class="text-xs mb-1.5" style="color:#28C158;">사전 프로필 파일을 포함한 자소서, 이력서 등</p>
-          <!-- 파일 input은 div 밖에 위치 — 이벤트 충돌 완전 차단 -->
-          <input type="file" id="profileFile" accept=".pdf,.hwp,.hwpx,.doc,.docx" multiple
-            style="display:none; position:absolute;" />
-
           <div class="file-zone" id="fileZone"
             ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-            <!-- 빈 상태: label for=로 클릭 → 파일 탐색기 (JS 불필요) -->
-            <label for="profileFile" id="fileZonePlaceholder" style="cursor:pointer; display:block; width:100%;">
+            <!-- 투명 input 오버레이: JS .click() 없이 사용자 클릭을 직접 받음 -->
+            <input type="file" id="profileFile" accept=".pdf,.hwp,.hwpx,.doc,.docx" multiple />
+            <!-- 빈 상태 플레이스홀더 (input 아래 레이어) -->
+            <div id="fileZonePlaceholder" style="position:relative; z-index:1; pointer-events:none;">
               <svg class="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                   d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
               <p class="text-sm text-gray-400">클릭하거나 파일을 드래그하세요</p>
               <p class="text-xs text-gray-300 mt-0.5">합계 100MB 이내, 개수 제한 없음</p>
-            </label>
-            <!-- 파일 목록 -->
-            <div id="fileZoneSelected" style="display:none" class="text-left w-full">
+            </div>
+            <!-- 파일 목록 (input보다 위 레이어) -->
+            <div id="fileZoneSelected" style="display:none; position:relative; z-index:10;" class="text-left w-full">
               <div id="fileList" class="space-y-1.5 mb-2"></div>
               <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
-                <label for="profileFile"
-                  class="text-xs font-semibold flex items-center gap-1 hover:underline" style="color:#28C158; cursor:pointer;">
+                <button type="button" id="addMoreBtn"
+                  class="text-xs font-semibold flex items-center gap-1 hover:underline" style="color:#28C158;">
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
                   </svg>
                   파일 추가
-                </label>
+                </button>
                 <span id="totalSizeLabel" class="text-xs text-gray-400"></span>
               </div>
             </div>
@@ -635,8 +640,8 @@
         return;
       }
       toAdd.forEach(f => _selectedFiles.push({ file: f, id: Date.now() + Math.random() }));
-      document.getElementById('profileFile').value = '';
       if (_selectedFiles.length > 0) {
+        document.getElementById('profileFile').classList.add('hidden-input');  // 오버레이 숨김
         document.getElementById('fileZonePlaceholder').style.display = 'none';
         document.getElementById('fileZoneSelected').style.display = 'block';
         document.getElementById('fileZone').classList.add('has-file');
@@ -656,16 +661,34 @@
 
     function clearAllFiles() {
       _selectedFiles = [];
-      document.getElementById('profileFile').value = '';
+      var input = document.getElementById('profileFile');
+      input.value = '';
+      input.classList.remove('hidden-input');  // 오버레이 다시 활성화
       document.getElementById('fileZonePlaceholder').style.display = '';
       document.getElementById('fileZoneSelected').style.display = 'none';
       document.getElementById('fileZone').classList.remove('has-file');
     }
 
-    // 파일 change 이벤트 (label for= 방식으로 클릭 트리거 — JS .click() 불필요)
-    document.getElementById('profileFile').addEventListener('change', function () {
-      if (this.files && this.files.length > 0) handleFilesAdd(this.files);
-    });
+    // ── 파일 input 이벤트 연결 ─────────────────────────────────────────────────
+    (function setupFileInput() {
+      var input   = document.getElementById('profileFile');
+      var addBtn  = document.getElementById('addMoreBtn');
+
+      // 파일 선택 완료
+      input.addEventListener('change', function () {
+        if (!this.files || this.files.length === 0) return;
+        var files = this.files;
+        handleFilesAdd(files);
+        // 같은 파일 재선택 가능하도록 value 초기화 (change 이벤트 이후)
+        setTimeout(function () { input.value = ''; }, 0);
+      });
+
+      // "파일 추가" 버튼 → input 클릭
+      addBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        input.click();
+      });
+    }());
 
     function handleDragOver(e) {
       e.preventDefault();
