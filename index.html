@@ -125,10 +125,8 @@
           </label>
           <p class="text-xs mb-1.5" style="color:#28C158;">사전 프로필 파일을 포함한 자소서, 이력서 등</p>
           <div class="file-zone" id="fileZone"
-            onclick="onFileZoneClick(event)"
             ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-            <input type="file" id="profileFile" accept=".pdf,.hwp,.hwpx,.doc,.docx" multiple
-              onchange="handleFilesAdd(this.files)" />
+            <input type="file" id="profileFile" accept=".pdf,.hwp,.hwpx,.doc,.docx" multiple />
             <!-- 빈 상태 -->
             <div id="fileZonePlaceholder">
               <svg class="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -661,14 +659,29 @@
       document.getElementById('fileZone').classList.remove('has-file');
     }
 
-    // 빈 상태일 때만 클릭으로 파일 탐색기 열기
-    function onFileZoneClick(e) {
-      if (_selectedFiles.length === 0) document.getElementById('profileFile').click();
-    }
     function openFilePicker(e) {
       e.stopPropagation(); e.preventDefault();
       document.getElementById('profileFile').click();
     }
+
+    // 파일 입력 이벤트 리스너 (inline 대신 JS로 등록 — 버블링 충돌 방지)
+    (function () {
+      const input = document.getElementById('profileFile');
+      const zone  = document.getElementById('fileZone');
+
+      // change: 파일 선택 완료
+      input.addEventListener('change', function () {
+        if (this.files && this.files.length > 0) handleFilesAdd(this.files);
+      });
+
+      // click 이벤트가 input → zone 으로 버블링되지 않도록 차단
+      input.addEventListener('click', function (e) { e.stopPropagation(); });
+
+      // zone 클릭 시 파일 탐색기 열기 (파일 없는 상태일 때만)
+      zone.addEventListener('click', function () {
+        if (_selectedFiles.length === 0) input.click();
+      });
+    })();
 
     function handleDragOver(e) {
       e.preventDefault();
