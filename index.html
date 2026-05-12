@@ -124,29 +124,33 @@
             <span class="text-xs font-normal text-gray-400 ml-1">(.pdf, .hwp, .hwpx, .doc, .docx)</span>
           </label>
           <p class="text-xs mb-1.5" style="color:#28C158;">사전 프로필 파일을 포함한 자소서, 이력서 등</p>
-          <div class="file-zone" id="fileZone" onclick="document.getElementById('profileFile').click()"
+          <div class="file-zone" id="fileZone"
+            onclick="onFileZoneClick(event)"
             ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-            <input type="file" id="profileFile" accept=".pdf,.hwp,.hwpx,.doc,.docx"
-              onchange="handleFileSelect(this.files[0])" />
+            <input type="file" id="profileFile" accept=".pdf,.hwp,.hwpx,.doc,.docx" multiple
+              onchange="handleFilesAdd(this.files)" />
+            <!-- 빈 상태 -->
             <div id="fileZonePlaceholder">
               <svg class="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                   d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
               <p class="text-sm text-gray-400">클릭하거나 파일을 드래그하세요</p>
-              <p class="text-xs text-gray-300 mt-0.5">최대 10MB</p>
+              <p class="text-xs text-gray-300 mt-0.5">합계 100MB 이내, 개수 제한 없음</p>
             </div>
-            <div id="fileZoneSelected" style="display:none" class="flex items-center justify-center gap-2">
-              <svg class="w-5 h-5 text-seed shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-              </svg>
-              <span id="selectedFileName" class="text-sm font-semibold text-seed truncate max-w-xs"></span>
-              <button type="button" onclick="clearFile(event)"
-                class="text-gray-400 hover:text-red-400 transition-colors shrink-0 ml-1">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-              </button>
+            <!-- 파일 목록 -->
+            <div id="fileZoneSelected" style="display:none" class="text-left w-full">
+              <div id="fileList" class="space-y-1.5 mb-2"></div>
+              <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+                <button type="button" onclick="openFilePicker(event)"
+                  class="text-xs font-semibold flex items-center gap-1 hover:underline" style="color:#28C158;">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                  </svg>
+                  파일 추가
+                </button>
+                <span id="totalSizeLabel" class="text-xs text-gray-400"></span>
+              </div>
             </div>
           </div>
           <p id="fileUploadProgress" style="display:none" class="text-xs text-seed mt-1.5 flex items-center gap-1.5">
@@ -580,25 +584,90 @@
     });
 
     // ── 파일 업로드 UI ───────────────────────────────────────────────────────
-    let _selectedFile = null;
+    const MAX_TOTAL_SIZE = 100 * 1024 * 1024; // 100MB
+    let _selectedFiles = []; // { file, id }
 
-    function handleFileSelect(file) {
-      if (!file) return;
-      if (file.size > 10 * 1024 * 1024) { showError('파일 크기는 최대 10MB까지 허용됩니다.'); clearFile(); return; }
-      _selectedFile = file;
-      document.getElementById('selectedFileName').textContent = file.name;
-      document.getElementById('fileZonePlaceholder').style.display = 'none';
-      document.getElementById('fileZoneSelected').style.display = 'flex';
-      document.getElementById('fileZone').classList.add('has-file');
+    function formatSize(bytes) {
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
     }
 
-    function clearFile(e) {
-      if (e) { e.stopPropagation(); e.preventDefault(); }
-      _selectedFile = null;
+    function getTotalSize() {
+      return _selectedFiles.reduce((sum, f) => sum + f.file.size, 0);
+    }
+
+    function renderFileList() {
+      const list = document.getElementById('fileList');
+      list.innerHTML = '';
+      _selectedFiles.forEach((item, idx) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center gap-2 rounded-lg px-2.5 py-1.5';
+        row.style.backgroundColor = '#E8F9EE';
+        row.innerHTML = `
+          <svg class="w-4 h-4 shrink-0" style="color:#28C158" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          <span class="text-xs font-medium flex-1 truncate" style="color:#28C158;">${item.file.name}</span>
+          <span class="text-xs text-gray-400 shrink-0">${formatSize(item.file.size)}</span>
+          <button type="button" onclick="removeFile(event,${idx})"
+            class="text-gray-400 hover:text-red-400 transition-colors shrink-0">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>`;
+        list.appendChild(row);
+      });
+      document.getElementById('totalSizeLabel').textContent =
+        `총 ${formatSize(getTotalSize())} / 100MB`;
+    }
+
+    function handleFilesAdd(fileList) {
+      const incoming = Array.from(fileList);
+      // 중복 파일명 제거
+      const existing = new Set(_selectedFiles.map(f => f.file.name));
+      const toAdd = incoming.filter(f => !existing.has(f.file.name));
+      const newTotal = getTotalSize() + toAdd.reduce((s, f) => s + f.file.size, 0);
+      if (newTotal > MAX_TOTAL_SIZE) {
+        showError('파일 합계 크기가 100MB를 초과합니다.<br>일부 파일을 제거해 주세요.');
+        document.getElementById('profileFile').value = '';
+        return;
+      }
+      toAdd.forEach(f => _selectedFiles.push({ file: f, id: Date.now() + Math.random() }));
+      document.getElementById('profileFile').value = '';
+      if (_selectedFiles.length > 0) {
+        document.getElementById('fileZonePlaceholder').style.display = 'none';
+        document.getElementById('fileZoneSelected').style.display = 'block';
+        document.getElementById('fileZone').classList.add('has-file');
+        renderFileList();
+      }
+    }
+
+    function removeFile(e, idx) {
+      e.stopPropagation(); e.preventDefault();
+      _selectedFiles.splice(idx, 1);
+      if (_selectedFiles.length === 0) {
+        clearAllFiles();
+      } else {
+        renderFileList();
+      }
+    }
+
+    function clearAllFiles() {
+      _selectedFiles = [];
       document.getElementById('profileFile').value = '';
       document.getElementById('fileZonePlaceholder').style.display = '';
       document.getElementById('fileZoneSelected').style.display = 'none';
       document.getElementById('fileZone').classList.remove('has-file');
+    }
+
+    // 빈 상태일 때만 클릭으로 파일 탐색기 열기
+    function onFileZoneClick(e) {
+      if (_selectedFiles.length === 0) document.getElementById('profileFile').click();
+    }
+    function openFilePicker(e) {
+      e.stopPropagation(); e.preventDefault();
+      document.getElementById('profileFile').click();
     }
 
     function handleDragOver(e) {
@@ -611,8 +680,7 @@
     function handleDrop(e) {
       e.preventDefault();
       document.getElementById('fileZone').classList.remove('drag-over');
-      const file = e.dataTransfer.files[0];
-      if (file) handleFileSelect(file);
+      if (e.dataTransfer.files.length) handleFilesAdd(e.dataTransfer.files);
     }
 
     async function uploadFileToServer(file, name, studentId) {
@@ -657,30 +725,36 @@
 
       if (!name || !studentId || !contact || !email) return showError('모든 항목을 빠짐없이 입력해 주세요.');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('올바른 이메일 형식을 입력해 주세요.');
-      if (!_selectedFile) return showError('사전 프로필 파일을 첨부해 주세요.');
+      if (_selectedFiles.length === 0) return showError('사전 프로필 파일을 첨부해 주세요.');
       if (!dayEl)  return showError('희망 요일을 선택해 주세요.');
       if (!dateEl) return showError('희망 날짜를 선택해 주세요.');
       if (!timeEl) return showError('희망 시간을 선택해 주세요.');
 
-      // 1단계: 파일 업로드
-      setLoading('submitBtn', 'btnText', 'btnSpinner', true, '파일 업로드 중...');
-      document.getElementById('fileUploadProgress').style.display = 'flex';
-
-      let fileId = '', fileName = '';
-      try {
-        const uploadResult = await uploadFileToServer(_selectedFile, name, studentId);
-        fileId   = uploadResult.fileId   || '';
-        fileName = uploadResult.fileName || _selectedFile.name;
-      } catch (err) {
-        document.getElementById('fileUploadProgress').style.display = 'none';
-        setLoading('submitBtn', 'btnText', 'btnSpinner', false, '예약 신청하기');
-        showError('파일 업로드에 실패했습니다.<br>파일을 확인하고 다시 시도해 주세요.');
-        console.error('[upload] 오류:', err.message);
-        return;
+      // 1단계: 파일 업로드 (순차)
+      const progress = document.getElementById('fileUploadProgress');
+      const fileIds = [], fileNames = [];
+      for (let i = 0; i < _selectedFiles.length; i++) {
+        const f = _selectedFiles[i].file;
+        setLoading('submitBtn', 'btnText', 'btnSpinner', true,
+          `파일 업로드 중... (${i + 1}/${_selectedFiles.length})`);
+        progress.style.display = 'flex';
+        try {
+          const result = await uploadFileToServer(f, name, studentId);
+          fileIds.push(result.fileId || '');
+          fileNames.push(result.fileName || f.name);
+        } catch (err) {
+          progress.style.display = 'none';
+          setLoading('submitBtn', 'btnText', 'btnSpinner', false, '예약 신청하기');
+          showError(`"${f.name}" 업로드에 실패했습니다.<br>파일을 확인하고 다시 시도해 주세요.`);
+          console.error('[upload] 오류:', err.message);
+          return;
+        }
       }
+      const fileId   = fileIds.join(',');
+      const fileName = fileNames.join(',');
 
       // 2단계: 예약 등록
-      document.getElementById('fileUploadProgress').style.display = 'none';
+      progress.style.display = 'none';
       setLoading('submitBtn', 'btnText', 'btnSpinner', true, '예약 처리 중...');
 
       try {
@@ -702,10 +776,11 @@
         }
 
         this.reset();
-        clearFile();
+        clearAllFiles();
         document.getElementById('dateSection').classList.add('hidden');
         document.getElementById('timeSection').classList.add('hidden');
-        showSuccess('예약 완료!', `상담 예약이 접수되었습니다.<br>사전 프로필(<b>${fileName}</b>)이 제출되었으며,<br>입력하신 이메일로 안내 메일이 발송됩니다.`);
+        const count = fileNames.length;
+        showSuccess('예약 완료!', `상담 예약이 접수되었습니다.<br>파일 ${count}개가 제출되었으며,<br>입력하신 이메일로 안내 메일이 발송됩니다.`);
 
       } catch (err) {
         setLoading('submitBtn', 'btnText', 'btnSpinner', false, '예약 신청하기');
