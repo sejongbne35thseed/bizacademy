@@ -124,29 +124,32 @@
             <span class="text-xs font-normal text-gray-400 ml-1">(.pdf, .hwp, .hwpx, .doc, .docx)</span>
           </label>
           <p class="text-xs mb-1.5" style="color:#28C158;">사전 프로필 파일을 포함한 자소서, 이력서 등</p>
+          <!-- 파일 input은 div 밖에 위치 — 이벤트 충돌 완전 차단 -->
+          <input type="file" id="profileFile" accept=".pdf,.hwp,.hwpx,.doc,.docx" multiple
+            style="display:none; position:absolute;" />
+
           <div class="file-zone" id="fileZone"
             ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-            <input type="file" id="profileFile" accept=".pdf,.hwp,.hwpx,.doc,.docx" multiple />
-            <!-- 빈 상태 -->
-            <div id="fileZonePlaceholder">
+            <!-- 빈 상태: label for=로 클릭 → 파일 탐색기 (JS 불필요) -->
+            <label for="profileFile" id="fileZonePlaceholder" style="cursor:pointer; display:block; width:100%;">
               <svg class="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                   d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
               <p class="text-sm text-gray-400">클릭하거나 파일을 드래그하세요</p>
               <p class="text-xs text-gray-300 mt-0.5">합계 100MB 이내, 개수 제한 없음</p>
-            </div>
+            </label>
             <!-- 파일 목록 -->
             <div id="fileZoneSelected" style="display:none" class="text-left w-full">
               <div id="fileList" class="space-y-1.5 mb-2"></div>
               <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
-                <button type="button" onclick="openFilePicker(event)"
-                  class="text-xs font-semibold flex items-center gap-1 hover:underline" style="color:#28C158;">
+                <label for="profileFile"
+                  class="text-xs font-semibold flex items-center gap-1 hover:underline" style="color:#28C158; cursor:pointer;">
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
                   </svg>
                   파일 추가
-                </button>
+                </label>
                 <span id="totalSizeLabel" class="text-xs text-gray-400"></span>
               </div>
             </div>
@@ -659,29 +662,10 @@
       document.getElementById('fileZone').classList.remove('has-file');
     }
 
-    function openFilePicker(e) {
-      e.stopPropagation(); e.preventDefault();
-      document.getElementById('profileFile').click();
-    }
-
-    // 파일 입력 이벤트 리스너 (inline 대신 JS로 등록 — 버블링 충돌 방지)
-    (function () {
-      const input = document.getElementById('profileFile');
-      const zone  = document.getElementById('fileZone');
-
-      // change: 파일 선택 완료
-      input.addEventListener('change', function () {
-        if (this.files && this.files.length > 0) handleFilesAdd(this.files);
-      });
-
-      // click 이벤트가 input → zone 으로 버블링되지 않도록 차단
-      input.addEventListener('click', function (e) { e.stopPropagation(); });
-
-      // zone 클릭 시 파일 탐색기 열기 (파일 없는 상태일 때만)
-      zone.addEventListener('click', function () {
-        if (_selectedFiles.length === 0) input.click();
-      });
-    })();
+    // 파일 change 이벤트 (label for= 방식으로 클릭 트리거 — JS .click() 불필요)
+    document.getElementById('profileFile').addEventListener('change', function () {
+      if (this.files && this.files.length > 0) handleFilesAdd(this.files);
+    });
 
     function handleDragOver(e) {
       e.preventDefault();
