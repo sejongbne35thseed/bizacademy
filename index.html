@@ -62,17 +62,9 @@
       border: 2px dashed #D1D5DB; border-radius: 0.75rem;
       padding: 1.25rem; text-align: center;
       transition: all .2s; background: #FAFAFA;
-      position: relative; overflow: hidden;
     }
-    .file-zone:hover, .file-zone.drag-over { border-color: #28C158; background: #E8F9EE; }
-    .file-zone.has-file { border-color: #28C158; border-style: solid; background: #E8F9EE; }
-    /* 투명 input 오버레이 — 플레이스홀더 위에 깔려서 클릭을 직접 받음 */
-    #profileFile {
-      position: absolute; top: 0; left: 0;
-      width: 100%; height: 100%;
-      opacity: 0; cursor: pointer; z-index: 5;
-    }
-    #profileFile.hidden-input { display: none; }
+    .file-zone.drag-over { border-color: #28C158; background: #E8F9EE; }
+    .file-zone.has-file  { border-color: #28C158; border-style: solid; background: #E8F9EE; }
     @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
     .fade-in { animation: fadeIn .4s ease both; }
     .fade-up  { animation: fadeIn .25s ease both; }
@@ -131,25 +123,39 @@
             <span class="text-xs font-normal text-gray-400 ml-1">(.pdf, .hwp, .hwpx, .doc, .docx)</span>
           </label>
           <p class="text-xs mb-1.5" style="color:#28C158;">사전 프로필 파일을 포함한 자소서, 이력서 등</p>
-          <div class="file-zone" id="fileZone"
-            ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-            <!-- 투명 input 오버레이: JS .click() 없이 사용자 클릭을 직접 받음 -->
-            <input type="file" id="profileFile" accept=".pdf,.hwp,.hwpx,.doc,.docx" multiple />
-            <!-- 빈 상태 플레이스홀더 (input 아래 레이어) -->
-            <div id="fileZonePlaceholder" style="position:relative; z-index:1; pointer-events:none;">
+
+          <!-- 숨겨진 파일 input — 절대 건드리지 않음 -->
+          <input type="file" id="profileFile" accept=".pdf,.hwp,.hwpx,.doc,.docx" multiple
+            style="display:none;" />
+
+          <!-- 파일 존 -->
+          <div id="fileZone" class="file-zone"
+            ondragover="handleDragOver(event)"
+            ondragleave="handleDragLeave(event)"
+            ondrop="handleDrop(event)">
+
+            <!-- 빈 상태 -->
+            <div id="fileZonePlaceholder">
               <svg class="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                   d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
-              <p class="text-sm text-gray-400">클릭하거나 파일을 드래그하세요</p>
-              <p class="text-xs text-gray-300 mt-0.5">합계 100MB 이내, 개수 제한 없음</p>
+              <p class="text-sm text-gray-400 mb-2">드래그하거나 아래 버튼으로 파일을 추가하세요</p>
+              <button type="button" id="filePickerBtn"
+                class="px-4 py-2 rounded-lg text-sm font-semibold text-white"
+                style="background:#28C158;">
+                파일 선택
+              </button>
+              <p class="text-xs text-gray-300 mt-2">합계 100MB 이내 · 개수 제한 없음</p>
             </div>
-            <!-- 파일 목록 (input보다 위 레이어) -->
-            <div id="fileZoneSelected" style="display:none; position:relative; z-index:10;" class="text-left w-full">
+
+            <!-- 파일 목록 -->
+            <div id="fileZoneSelected" style="display:none;" class="text-left w-full">
               <div id="fileList" class="space-y-1.5 mb-2"></div>
-              <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+              <div class="flex items-center justify-between pt-2" style="border-top:1px solid #E5E7EB;">
                 <button type="button" id="addMoreBtn"
-                  class="text-xs font-semibold flex items-center gap-1 hover:underline" style="color:#28C158;">
+                  class="text-xs font-semibold flex items-center gap-1"
+                  style="color:#28C158;">
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
                   </svg>
@@ -159,7 +165,8 @@
               </div>
             </div>
           </div>
-          <p id="fileUploadProgress" style="display:none" class="text-xs text-seed mt-1.5 flex items-center gap-1.5">
+
+          <p id="fileUploadProgress" style="display:none;" class="text-xs mt-1.5 flex items-center gap-1.5" style="color:#28C158;">
             <span class="spinner-gray" style="width:14px;height:14px;"></span> 파일 업로드 중...
           </p>
         </div>
@@ -589,106 +596,77 @@
         gridId: 'timeGrid', loadingId: 'timeLoadingMsg', errorId: 'timeErrorMsg', prefix: '' });
     });
 
-    // ── 파일 업로드 UI ───────────────────────────────────────────────────────
-    const MAX_TOTAL_SIZE = 100 * 1024 * 1024; // 100MB
-    let _selectedFiles = []; // { file, id }
+    // ── 파일 업로드 ──────────────────────────────────────────────────────────
+    var _selectedFiles = [];
+    var MAX_TOTAL = 100 * 1024 * 1024;
 
-    function formatSize(bytes) {
-      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB';
-      return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
+    function fmtSize(b) {
+      return b < 1048576 ? (b/1024).toFixed(1)+'KB' : (b/1048576).toFixed(1)+'MB';
+    }
+    function totalSize() {
+      return _selectedFiles.reduce(function(s,f){ return s+f.size; }, 0);
     }
 
-    function getTotalSize() {
-      return _selectedFiles.reduce((sum, f) => sum + f.file.size, 0);
-    }
+    function refreshFileUI() {
+      var hasFils = _selectedFiles.length > 0;
+      document.getElementById('fileZonePlaceholder').style.display = hasFils ? 'none' : '';
+      document.getElementById('fileZoneSelected').style.display   = hasFils ? 'block' : 'none';
+      document.getElementById('fileZone').classList.toggle('has-file', hasFils);
 
-    function renderFileList() {
-      const list = document.getElementById('fileList');
+      var list = document.getElementById('fileList');
       list.innerHTML = '';
-      _selectedFiles.forEach((item, idx) => {
-        const row = document.createElement('div');
-        row.className = 'flex items-center gap-2 rounded-lg px-2.5 py-1.5';
-        row.style.backgroundColor = '#E8F9EE';
-        row.innerHTML = `
-          <svg class="w-4 h-4 shrink-0" style="color:#28C158" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-          </svg>
-          <span class="text-xs font-medium flex-1 truncate" style="color:#28C158;">${item.file.name}</span>
-          <span class="text-xs text-gray-400 shrink-0">${formatSize(item.file.size)}</span>
-          <button type="button" onclick="removeFile(event,${idx})"
-            class="text-gray-400 hover:text-red-400 transition-colors shrink-0">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>`;
+      _selectedFiles.forEach(function(file, idx) {
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;background:#E8F9EE;border-radius:8px;padding:6px 10px;margin-bottom:4px;';
+        row.innerHTML =
+          '<span style="flex:1;font-size:12px;color:#28C158;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📄 '+file.name+'</span>'+
+          '<span style="font-size:11px;color:#9CA3AF;white-space:nowrap;">'+fmtSize(file.size)+'</span>'+
+          '<button type="button" style="background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:16px;line-height:1;padding:0 2px;" data-idx="'+idx+'">✕</button>';
+        row.querySelector('button').addEventListener('click', function(e) {
+          e.stopPropagation();
+          _selectedFiles.splice(parseInt(this.getAttribute('data-idx')), 1);
+          refreshFileUI();
+        });
         list.appendChild(row);
       });
       document.getElementById('totalSizeLabel').textContent =
-        `총 ${formatSize(getTotalSize())} / 100MB`;
+        _selectedFiles.length ? '총 '+fmtSize(totalSize())+' / 100MB' : '';
     }
 
-    function handleFilesAdd(fileList) {
-      const incoming = Array.from(fileList);
-      // 중복 파일명 제거
-      const existing = new Set(_selectedFiles.map(f => f.file.name));
-      const toAdd = incoming.filter(f => !existing.has(f.file.name));
-      const newTotal = getTotalSize() + toAdd.reduce((s, f) => s + f.file.size, 0);
-      if (newTotal > MAX_TOTAL_SIZE) {
-        showError('파일 합계 크기가 100MB를 초과합니다.<br>일부 파일을 제거해 주세요.');
-        document.getElementById('profileFile').value = '';
-        return;
+    function addFilesToList(fileList) {
+      var arr = Array.prototype.slice.call(fileList);
+      var existNames = _selectedFiles.map(function(f){ return f.name; });
+      arr.forEach(function(f) {
+        if (existNames.indexOf(f.name) === -1) _selectedFiles.push(f);
+      });
+      if (totalSize() > MAX_TOTAL) {
+        showError('파일 합계 크기가 100MB를 초과합니다.');
+        _selectedFiles = [];
       }
-      toAdd.forEach(f => _selectedFiles.push({ file: f, id: Date.now() + Math.random() }));
-      if (_selectedFiles.length > 0) {
-        document.getElementById('profileFile').classList.add('hidden-input');  // 오버레이 숨김
-        document.getElementById('fileZonePlaceholder').style.display = 'none';
-        document.getElementById('fileZoneSelected').style.display = 'block';
-        document.getElementById('fileZone').classList.add('has-file');
-        renderFileList();
-      }
-    }
-
-    function removeFile(e, idx) {
-      e.stopPropagation(); e.preventDefault();
-      _selectedFiles.splice(idx, 1);
-      if (_selectedFiles.length === 0) {
-        clearAllFiles();
-      } else {
-        renderFileList();
-      }
+      refreshFileUI();
     }
 
     function clearAllFiles() {
       _selectedFiles = [];
-      var input = document.getElementById('profileFile');
-      input.value = '';
-      input.classList.remove('hidden-input');  // 오버레이 다시 활성화
-      document.getElementById('fileZonePlaceholder').style.display = '';
-      document.getElementById('fileZoneSelected').style.display = 'none';
-      document.getElementById('fileZone').classList.remove('has-file');
+      document.getElementById('profileFile').value = '';
+      refreshFileUI();
     }
 
-    // ── 파일 input 이벤트 연결 ─────────────────────────────────────────────────
-    (function setupFileInput() {
-      var input   = document.getElementById('profileFile');
-      var addBtn  = document.getElementById('addMoreBtn');
+    // 파일 선택 버튼 & "파일 추가" 버튼 — 각각 단순히 input.click() 호출
+    document.getElementById('filePickerBtn').addEventListener('click', function() {
+      document.getElementById('profileFile').click();
+    });
+    document.getElementById('addMoreBtn').addEventListener('click', function() {
+      document.getElementById('profileFile').click();
+    });
 
-      // 파일 선택 완료
-      input.addEventListener('change', function () {
-        if (!this.files || this.files.length === 0) return;
-        var files = this.files;
-        handleFilesAdd(files);
-        // 같은 파일 재선택 가능하도록 value 초기화 (change 이벤트 이후)
-        setTimeout(function () { input.value = ''; }, 0);
-      });
-
-      // "파일 추가" 버튼 → input 클릭
-      addBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        input.click();
-      });
-    }());
+    // change 이벤트 — 파일이 선택되면 목록에 추가
+    document.getElementById('profileFile').addEventListener('change', function() {
+      if (this.files && this.files.length > 0) {
+        addFilesToList(this.files);
+      }
+      this.value = '';  // 같은 파일 재선택 허용
+    });
 
     function handleDragOver(e) {
       e.preventDefault();
@@ -700,7 +678,7 @@
     function handleDrop(e) {
       e.preventDefault();
       document.getElementById('fileZone').classList.remove('drag-over');
-      if (e.dataTransfer.files.length) handleFilesAdd(e.dataTransfer.files);
+      if (e.dataTransfer.files.length) addFilesToList(e.dataTransfer.files);
     }
 
     async function uploadFileToServer(file, name, studentId) {
@@ -745,7 +723,7 @@
 
       if (!name || !studentId || !contact || !email) return showError('모든 항목을 빠짐없이 입력해 주세요.');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('올바른 이메일 형식을 입력해 주세요.');
-      if (_selectedFiles.length === 0) return showError('사전 프로필 파일을 첨부해 주세요.');
+      if (!_selectedFiles || _selectedFiles.length === 0) return showError('사전 프로필 파일을 첨부해 주세요.');
       if (!dayEl)  return showError('희망 요일을 선택해 주세요.');
       if (!dateEl) return showError('희망 날짜를 선택해 주세요.');
       if (!timeEl) return showError('희망 시간을 선택해 주세요.');
@@ -754,7 +732,7 @@
       const progress = document.getElementById('fileUploadProgress');
       const fileIds = [], fileNames = [];
       for (let i = 0; i < _selectedFiles.length; i++) {
-        const f = _selectedFiles[i].file;
+        const f = _selectedFiles[i];
         setLoading('submitBtn', 'btnText', 'btnSpinner', true,
           `파일 업로드 중... (${i + 1}/${_selectedFiles.length})`);
         progress.style.display = 'flex';
