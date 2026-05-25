@@ -410,6 +410,14 @@
     };
     const KO_DAYS = ['일','월','화','수','목','금','토'];
 
+    // 공휴일로 인한 날짜 보강: 특정 요일의 날짜를 다른 날짜로 대체
+    // key: 원래 날짜(ISO) → { replacedBy: 대체날짜(ISO), badge: 표시 텍스트 }
+    const MAKEUP_DATES = {
+      '수요일': {
+        '2026-06-03': { replacedBy: '2026-06-02', badge: '보강' }
+      }
+    };
+
     // 공휴일 목록 (YYYY-MM-DD → 공휴일명)
     const HOLIDAYS = {
       // 2025
@@ -505,14 +513,14 @@
     }
 
     // ── 슬롯 조회 ────────────────────────────────────────────────────────────
-    async function fetchTakenSlots(date) {
+    async function fetchTakenSlots(date, day) {
       try {
-        const data = await callServer({ action: 'getSlots', date });
+        const data = await callServer({ action: 'getSlots', date, day: day || '' });
         if (!Array.isArray(data.takenSlots)) {
           console.error('[getSlots] 응답 형식 오류:', data);
           return null;
         }
-        console.log('[getSlots]', date, '→ taken:', data.takenSlots);
+        console.log('[getSlots]', date, day, '→ taken:', data.takenSlots);
         return data.takenSlots;
       } catch (err) {
         console.error('[getSlots] 요청 실패:', err.message);
@@ -521,10 +529,28 @@
     }
 
     // ── 시간 그리드 렌더링 ───────────────────────────────────────────────────
-    function renderDateGrid(containerId, dates, prefix) {
+    // 날짜 목록 생성 (보강 날짜 대체 적용)
+    // 반환값: { d: Date, badge: string|null }[]
+    function getUpcomingDatesForDay(dayLabel) {
+      const targetDow = dayLabel === '화요일' ? 2 : 3;
+      const rawDates  = getUpcomingDates(targetDow);
+      const overrides = (MAKEUP_DATES[dayLabel] || {});
+      return rawDates.map(d => {
+        const iso = toISODate(d);
+        if (overrides[iso]) {
+          const ov    = overrides[iso];
+          const parts = ov.replacedBy.split('-');
+          const nd    = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+          return { d: nd, badge: ov.badge };
+        }
+        return { d: d, badge: null };
+      });
+    }
+
+    function renderDateGrid(containerId, dateMetas, prefix) {
       const grid = document.getElementById(containerId);
       grid.innerHTML = '';
-      dates.forEach((d, i) => {
+      dateMetas.forEach(({ d, badge }, i) => {
         const iso = toISODate(d);
         const holidayName = HOLIDAYS[iso] || null;
         grid.innerHTML += `
@@ -532,7 +558,11 @@
             <input type="radio" name="${prefix}date" id="${prefix}date${i}" value="${iso}" ${holidayName ? 'disabled' : ''} />
             <label for="${prefix}date${i}" class="flex-col text-sm font-semibold text-center leading-snug">
               <span>${formatDateLabel(d)}</span>
-              ${holidayName ? `<span style="font-size:10px;font-weight:400;margin-top:2px;">${holidayName}</span>` : ''}
+              ${holidayName
+                ? `<span style="font-size:10px;font-weight:400;margin-top:2px;">${holidayName}</span>`
+                : badge
+                  ? `<span style="font-size:10px;font-weight:600;margin-top:2px;color:#28C158;">${badge}</span>`
+                  : ''}
             </label>
           </div>`;
       });
@@ -560,7 +590,7 @@
       document.getElementById(errorId).classList.add('hidden');
       document.getElementById(gridId).innerHTML = '';
 
-      const taken = await fetchTakenSlots(date);
+      const taken = await fetchTakenSlots(date, day);
 
       document.getElementById(loadingId).classList.add('hidden');
       if (taken === null) {
@@ -590,7 +620,7 @@
         const day = this.value;
         document.getElementById('professorBadge').textContent =
           day === '화요일' ? '허재영 교수님' : '김용관 대우교수님';
-        renderDateGrid('dateGrid', getUpcomingDates(day === '화요일' ? 2 : 3), '');
+        renderDateGrid('dateGrid', getUpcomingDatesForDay(day), '');
         document.getElementById('dateSection').classList.remove('hidden');
         document.getElementById('timeGrid').innerHTML = '';
         document.getElementById('timeSection').classList.add('hidden');
@@ -868,7 +898,7 @@
 
     document.querySelectorAll('input[name="modDay"]').forEach(radio => {
       radio.addEventListener('change', function () {
-        renderDateGrid('modDateGrid', getUpcomingDates(this.value === '화요일' ? 2 : 3), 'mod');
+        renderDateGrid('modDateGrid', getUpcomingDatesForDay(this.value), 'mod');
         document.getElementById('modDateSection').classList.remove('hidden');
         document.getElementById('modTimeGrid').innerHTML = '';
         document.getElementById('modTimeSection').classList.add('hidden');
