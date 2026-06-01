@@ -414,7 +414,9 @@
     // key: 원래 날짜(ISO) → { replacedBy: 대체날짜(ISO), badge: 표시 텍스트 }
     const MAKEUP_DATES = {
       '수요일': {
-        '2026-06-03': { replacedBy: '2026-06-02', badge: '보강' }
+        '2026-06-03': { replacedBy: '2026-06-02', badge: '보강' },
+        '2026-06-17': { replacedBy: '2026-06-16', badge: '보강', slots: ['13:30', '15:00'] },
+        '2026-06-24': { replacedBy: '2026-06-23', badge: '보강' }
       }
     };
 
@@ -568,10 +570,10 @@
       });
     }
 
-    function renderTimeGrid(containerId, day, takenSlots, prefix) {
+    function renderTimeGrid(containerId, day, takenSlots, prefix, customSlots) {
       const grid = document.getElementById(containerId);
       grid.innerHTML = '';
-      TIME_OPTIONS[day].forEach((t, i) => {
+      (customSlots || TIME_OPTIONS[day]).forEach((t, i) => {
         const taken = takenSlots.includes(t);
         grid.innerHTML += `
           <div class="time-btn${taken ? ' taken' : ''}">
@@ -592,11 +594,18 @@
 
       const taken = await fetchTakenSlots(date, day);
 
+      // 보강 날짜에 커스텀 슬롯이 지정된 경우 해당 슬롯만 표시
+      let customSlots = null;
+      const makeupOverrides = MAKEUP_DATES[day] || {};
+      Object.values(makeupOverrides).forEach(function(ov) {
+        if (ov.replacedBy === date && ov.slots) customSlots = ov.slots;
+      });
+
       document.getElementById(loadingId).classList.add('hidden');
       if (taken === null) {
         document.getElementById(errorId).classList.remove('hidden');
       } else {
-        renderTimeGrid(gridId, day, taken, prefix);
+        renderTimeGrid(gridId, day, taken, prefix, customSlots);
       }
     }
 
