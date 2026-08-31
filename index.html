@@ -99,7 +99,7 @@
            style="background:#EFF6FF;border:1.5px solid #BFDBFE;">
         <span style="font-size:18px;line-height:1.6;">📢</span>
         <p style="font-size:13px;color:#1E40AF;margin:0;line-height:1.8;">
-          <b>2학기 비즈 아카데미 신청이 9월 1일(화) 개강과 함께 시작됩니다.</b><br>
+          <b>2학기 비즈 아카데미 신청을 시작합니다!</b><br>
           멘토링은 9월 8일(화)부터 진행되니 참고해 주세요.<br>
           많은 관심과 참여 부탁드립니다.
         </p>
@@ -464,7 +464,7 @@
 
     // 방학 기간 (이 기간의 날짜는 날짜 목록에서 자동 제외)
     const VACATION_PERIODS = [
-      { start: '2026-06-24', end: '2026-08-31' }  // 2학기 개강일(9/1) 전날까지
+      { start: '2026-06-24', end: '2026-08-30' }  // 2학기 신청 조기 오픈(8/31)으로 종료일 앞당김
     ];
     function isVacation(iso) {
       return VACATION_PERIODS.some(function(p) { return iso >= p.start && iso <= p.end; });
