@@ -85,7 +85,11 @@
 </head>
 <body class="min-h-screen bg-[#F6F6F4] flex items-center justify-center p-4 py-10">
 
-  <div class="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-black/[0.04] overflow-hidden fade-in">
+  <!-- 배경 워터마크 로고 — 뷰포트에 고정되어 스크롤해도 위치가 유지됨 -->
+  <img src="bne.svg" alt=""
+       class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-auto -z-10 pointer-events-none select-none invert opacity-[0.06]" />
+
+  <div class="w-full max-w-lg bg-white/95 rounded-2xl shadow-xl border border-black/[0.04] overflow-hidden fade-in">
 
     <!-- 헤더 -->
     <div class="relative px-8 pt-9 pb-8" style="background:#12241A;">
@@ -98,19 +102,13 @@
            style="background:linear-gradient(90deg, transparent, rgba(40,193,88,.55) 50%, transparent);"></div>
     </div>
 
-    <!-- 하단 콘텐츠 영역 (탭 + 폼) — 로고를 워터마크로 배치 -->
-    <div class="relative">
-      <img src="bne.svg" alt=""
-           class="absolute -z-10 top-10 left-1/2 h-64 w-auto pointer-events-none select-none"
-           style="opacity:.06; filter: invert(1); transform: translateX(-50%);" />
-
-      <!-- 탭 -->
-      <div class="flex border-b border-gray-100">
-        <button id="tab-new" onclick="switchTab('new')"
-          class="tab-btn active flex-1 py-3.5 text-sm font-medium text-seed">신규 예약</button>
-        <button id="tab-manage" onclick="switchTab('manage')"
-          class="tab-btn flex-1 py-3.5 text-sm font-medium text-gray-400">예약 조회 / 관리</button>
-      </div>
+    <!-- 탭 -->
+    <div class="flex border-b border-gray-100">
+      <button id="tab-new" onclick="switchTab('new')"
+        class="tab-btn active flex-1 py-3.5 text-sm font-medium text-seed">신규 예약</button>
+      <button id="tab-manage" onclick="switchTab('manage')"
+        class="tab-btn flex-1 py-3.5 text-sm font-medium text-gray-400">예약 조회 / 관리</button>
+    </div>
 
     <!-- ══ 탭 1: 신규 예약 ══ -->
     <div id="panel-new" class="px-8 py-7">
@@ -150,22 +148,22 @@
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1.5">이름 <span class="text-red-500">*</span></label>
           <input id="name" type="text" placeholder="홍길동"
-            class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-colors" required />
+            class="w-full bg-transparent border border-gray-300 rounded-lg px-4 py-3 text-sm transition-colors" required />
         </div>
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1.5">학번 <span class="text-red-500">*</span></label>
           <input id="studentId" type="text" placeholder="학번 8자리" inputmode="numeric"
-            class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-colors" required />
+            class="w-full bg-transparent border border-gray-300 rounded-lg px-4 py-3 text-sm transition-colors" required />
         </div>
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1.5">연락처 <span class="text-red-500">*</span></label>
           <input id="contact" type="tel" placeholder="010-0000-0000"
-            class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-colors" required />
+            class="w-full bg-transparent border border-gray-300 rounded-lg px-4 py-3 text-sm transition-colors" required />
         </div>
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1.5">이메일 <span class="text-red-500">*</span></label>
           <input id="email" type="email" placeholder="example@gmail.com"
-            class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-colors" required />
+            class="w-full bg-transparent border border-gray-300 rounded-lg px-4 py-3 text-sm transition-colors" required />
         </div>
 
         <!-- 사전 프로필 파일 업로드 -->
@@ -308,12 +306,12 @@
           <div>
             <label class="block text-sm font-semibold text-gray-700 mb-1.5">학번 <span class="text-red-500">*</span></label>
             <input id="lookupStudentId" type="text" placeholder="학번 8자리" inputmode="numeric"
-              class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-colors" />
+              class="w-full bg-transparent border border-gray-300 rounded-lg px-4 py-3 text-sm transition-colors" />
           </div>
           <div>
             <label class="block text-sm font-semibold text-gray-700 mb-1.5">이메일 <span class="text-red-500">*</span></label>
             <input id="lookupEmail" type="email" placeholder="example@naver.com"
-              class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-colors" />
+              class="w-full bg-transparent border border-gray-300 rounded-lg px-4 py-3 text-sm transition-colors" />
           </div>
           <button id="lookupBtn" onclick="handleLookup()"
             class="w-full text-white font-semibold py-3.5 rounded-lg text-sm transition-all hover:brightness-125 flex items-center justify-center gap-2"
@@ -399,7 +397,6 @@
           ← 다시 조회하기
         </button>
       </div>
-    </div>
     </div>
   </div>
 
