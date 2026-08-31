@@ -89,8 +89,6 @@
 
     <!-- 헤더 -->
     <div class="relative px-8 pt-9 pb-8" style="background:#12241A;">
-      <img src="bne.svg" alt="세종대학교 경영경제대학 로고"
-           class="absolute top-7 right-8 h-14 w-auto" style="opacity:.92;" />
       <p class="text-[11px] font-medium tracking-[0.16em] mb-3.5" style="color:rgba(255,255,255,.55);">
         SEJONG UNIV. 경영경제대학 학생회 Seed
       </p>
@@ -100,13 +98,19 @@
            style="background:linear-gradient(90deg, transparent, rgba(40,193,88,.55) 50%, transparent);"></div>
     </div>
 
-    <!-- 탭 -->
-    <div class="flex border-b border-gray-100">
-      <button id="tab-new" onclick="switchTab('new')"
-        class="tab-btn active flex-1 py-3.5 text-sm font-medium text-seed">신규 예약</button>
-      <button id="tab-manage" onclick="switchTab('manage')"
-        class="tab-btn flex-1 py-3.5 text-sm font-medium text-gray-400">예약 조회 / 관리</button>
-    </div>
+    <!-- 하단 콘텐츠 영역 (탭 + 폼) — 로고를 워터마크로 배치 -->
+    <div class="relative">
+      <img src="bne.svg" alt=""
+           class="absolute -z-10 -top-8 -right-10 h-64 w-auto pointer-events-none select-none"
+           style="opacity:.06; filter: invert(1);" />
+
+      <!-- 탭 -->
+      <div class="flex border-b border-gray-100">
+        <button id="tab-new" onclick="switchTab('new')"
+          class="tab-btn active flex-1 py-3.5 text-sm font-medium text-seed">신규 예약</button>
+        <button id="tab-manage" onclick="switchTab('manage')"
+          class="tab-btn flex-1 py-3.5 text-sm font-medium text-gray-400">예약 조회 / 관리</button>
+      </div>
 
     <!-- ══ 탭 1: 신규 예약 ══ -->
     <div id="panel-new" class="px-8 py-7">
@@ -395,6 +399,7 @@
           ← 다시 조회하기
         </button>
       </div>
+    </div>
     </div>
   </div>
 
