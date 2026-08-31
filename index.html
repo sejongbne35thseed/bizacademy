@@ -83,16 +83,16 @@
     .tab-btn.active { border-bottom-color: #1B7A3E; color: #1B7A3E; }
   </style>
 </head>
-<body class="min-h-screen bg-[#F6F6F4] flex items-center justify-center p-4 py-10">
+<body class="h-screen overflow-hidden bg-[#F6F6F4] flex items-center justify-center p-4 py-6">
 
-  <!-- 배경 워터마크 로고 — 뷰포트에 고정되어 스크롤해도 위치가 유지됨 -->
+  <!-- 배경 워터마크 로고 — 뷰포트에 고정. 카드도 화면에 고정되므로 항상 같은 자리에 겹쳐 보임 -->
   <img src="bne.svg" alt=""
-       class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-auto -z-10 pointer-events-none select-none invert opacity-[0.06]" />
+       class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-auto -z-10 pointer-events-none select-none invert opacity-80" />
 
-  <div class="w-full max-w-lg bg-white/95 rounded-2xl shadow-xl border border-black/[0.04] overflow-hidden fade-in">
+  <div class="w-full max-w-lg max-h-[92vh] bg-white/93 rounded-2xl shadow-xl border border-black/[0.04] overflow-hidden fade-in flex flex-col">
 
-    <!-- 헤더 -->
-    <div class="relative px-8 pt-9 pb-8" style="background:#12241A;">
+    <!-- 헤더 (고정) -->
+    <div class="relative shrink-0 px-8 pt-9 pb-8" style="background:#12241A;">
       <p class="text-[11px] font-medium tracking-[0.16em] mb-3.5" style="color:rgba(255,255,255,.55);">
         SEJONG UNIV. 경영경제대학 학생회 Seed
       </p>
@@ -102,13 +102,16 @@
            style="background:linear-gradient(90deg, transparent, rgba(40,193,88,.55) 50%, transparent);"></div>
     </div>
 
-    <!-- 탭 -->
-    <div class="flex border-b border-gray-100">
+    <!-- 탭 (고정) -->
+    <div class="flex shrink-0 border-b border-gray-100">
       <button id="tab-new" onclick="switchTab('new')"
         class="tab-btn active flex-1 py-3.5 text-sm font-medium text-seed">신규 예약</button>
       <button id="tab-manage" onclick="switchTab('manage')"
         class="tab-btn flex-1 py-3.5 text-sm font-medium text-gray-400">예약 조회 / 관리</button>
     </div>
+
+    <!-- 스크롤 영역 (카드 프레임은 고정, 내부 콘텐츠만 스크롤) -->
+    <div class="flex-1 min-h-0 overflow-y-auto">
 
     <!-- ══ 탭 1: 신규 예약 ══ -->
     <div id="panel-new" class="px-8 py-7">
@@ -397,6 +400,7 @@
           ← 다시 조회하기
         </button>
       </div>
+    </div>
     </div>
   </div>
 
