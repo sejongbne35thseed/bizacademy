@@ -225,22 +225,20 @@
           </p>
         </div>
 
-        <!-- 희망 요일 -->
+        <!-- 희망 교수님 -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">희망 요일 <span class="text-red-500">*</span></label>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">희망 교수님 <span class="text-red-500">*</span></label>
           <div class="grid grid-cols-2 gap-3">
             <div class="day-btn">
               <input type="radio" name="day" id="dayTue" value="화요일" />
               <label for="dayTue" class="flex-col text-sm">
-                <span class="text-base">화요일</span>
-                <span class="text-xs font-normal opacity-70 mt-0.5">허재영 교수님</span>
+                <span class="text-sm font-semibold whitespace-nowrap">허재영 교수님</span>
               </label>
             </div>
             <div class="day-btn">
               <input type="radio" name="day" id="dayWed" value="수요일" />
               <label for="dayWed" class="flex-col text-sm">
-                <span class="text-base">수요일</span>
-                <span class="text-xs font-normal opacity-70 mt-0.5">김용관 대우교수님</span>
+                <span class="text-sm font-semibold whitespace-nowrap">김용관 교수님</span>
               </label>
             </div>
           </div>
@@ -357,20 +355,18 @@
         <div id="modifyForm" class="hidden border-t border-gray-100 pt-5 space-y-4 fade-up">
           <p class="text-sm font-semibold text-gray-700">변경할 일정 선택</p>
           <div>
-            <label class="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">희망 요일</label>
+            <label class="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">희망 교수님</label>
             <div class="grid grid-cols-2 gap-3">
               <div class="day-btn">
                 <input type="radio" name="modDay" id="modDayTue" value="화요일" />
                 <label for="modDayTue" class="flex-col text-sm">
-                  <span class="text-base">화요일</span>
-                  <span class="text-xs font-normal opacity-70 mt-0.5">허재영 교수님</span>
+                  <span class="text-sm font-semibold whitespace-nowrap">허재영 교수님</span>
                 </label>
               </div>
               <div class="day-btn">
                 <input type="radio" name="modDay" id="modDayWed" value="수요일" />
                 <label for="modDayWed" class="flex-col text-sm">
-                  <span class="text-base">수요일</span>
-                  <span class="text-xs font-normal opacity-70 mt-0.5">김용관 대우교수님</span>
+                  <span class="text-sm font-semibold whitespace-nowrap">김용관 교수님</span>
                 </label>
               </div>
             </div>
@@ -476,6 +472,12 @@
         '2026-06-24': { replacedBy: '2026-06-23', badge: '보강' }
       }
     };
+
+    // 김용관 교수님(수요일) 2학기 확정 상담 일정 — 매주 반복이 아닌 별도 확정 날짜
+    const WED_FIXED_DATES = [
+      '2026-09-10', '2026-09-16', '2026-09-21', '2026-09-30',
+      '2026-10-06', '2026-10-15', '2026-10-21', '2026-10-28'
+    ];
 
     // 관리자가 수동으로 마감 처리한 슬롯 (실제 예약 시트 상태와 무관하게 강제로 마감 표시)
     // key: 'YYYY-MM-DD' → 마감할 시간 배열
@@ -615,6 +617,44 @@
     // 날짜 목록 생성 (보강 대체 + 방학 제외 적용)
     // 반환값: { d: Date, badge: string|null }[]
     function getUpcomingDatesForDay(dayLabel) {
+      // 수요일(김용관 교수님)은 매주 반복이 아닌 확정된 날짜 목록을 사용,
+      // 지난 날짜는 자동으로 빠지고 항상 4개를 유지. 확정 목록을 다 지나면
+      // 마지막 확정일 이후부터는 매주 수요일로 자동 생성해서 채움.
+      if (dayLabel === '수요일') {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const result = [];
+
+        WED_FIXED_DATES.forEach(function(iso) {
+          if (result.length >= 4 || isVacation(iso)) return;
+          const parts = iso.split('-');
+          const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+          if (d < today) return; // 이미 지난 날짜는 목록에서 제외
+          result.push({ d: d, badge: null });
+        });
+
+        // 확정 목록이 4개 미만이면 마지막 확정일 다음날(또는 오늘, 둘 중 늦은 날짜)부터
+        // 매주 수요일로 채워서 항상 4개를 유지
+        if (result.length < 4) {
+          const lastIso   = WED_FIXED_DATES[WED_FIXED_DATES.length - 1];
+          const lastParts = lastIso.split('-');
+          const afterLast = new Date(parseInt(lastParts[0]), parseInt(lastParts[1]) - 1, parseInt(lastParts[2]));
+          afterLast.setDate(afterLast.getDate() + 1);
+          const d = afterLast > today ? afterLast : new Date(today);
+          let safety = 0;
+          while (result.length < 4 && safety < 365) {
+            safety++;
+            if (d.getDay() === 3) {
+              const iso = toISODate(d);
+              if (!isVacation(iso)) result.push({ d: new Date(d), badge: null });
+            }
+            d.setDate(d.getDate() + 1);
+          }
+        }
+
+        return result;
+      }
+
       const targetDow = dayLabel === '화요일' ? 2 : 3;
       const overrides = MAKEUP_DATES[dayLabel] || {};
 
@@ -731,7 +771,7 @@
       radio.addEventListener('change', function () {
         const day = this.value;
         document.getElementById('professorBadge').textContent =
-          day === '화요일' ? '허재영 교수님' : '김용관 대우교수님';
+          day === '화요일' ? '허재영 교수님' : '김용관 교수님';
         renderDateGrid('dateGrid', getUpcomingDatesForDay(day), '');
         document.getElementById('dateSection').classList.remove('hidden');
         document.getElementById('timeGrid').innerHTML = '';
@@ -878,7 +918,7 @@
       if (!name || !studentId || !contact || !email) return showError('모든 항목을 빠짐없이 입력해 주세요.');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('올바른 이메일 형식을 입력해 주세요.');
       if (!_selectedFiles || _selectedFiles.length === 0) return showError('사전 프로필 파일을 첨부해 주세요.');
-      if (!dayEl)  return showError('희망 요일을 선택해 주세요.');
+      if (!dayEl)  return showError('희망 교수님을 선택해 주세요.');
       if (!dateEl) return showError('희망 날짜를 선택해 주세요.');
       if (!timeEl) return showError('희망 시간을 선택해 주세요.');
 
@@ -1032,7 +1072,7 @@
       const dayEl  = document.querySelector('input[name="modDay"]:checked');
       const dateEl = document.querySelector('input[name="moddate"]:checked');
       const timeEl = document.querySelector('input[name="modtime"]:checked');
-      if (!dayEl)  return showError('변경할 요일을 선택해 주세요.');
+      if (!dayEl)  return showError('변경할 교수님을 선택해 주세요.');
       if (!dateEl) return showError('변경할 날짜를 선택해 주세요.');
       if (!timeEl) return showError('변경할 시간을 선택해 주세요.');
 

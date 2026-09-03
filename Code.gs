@@ -362,7 +362,7 @@ function renameFiles(fileIds, oldDate, newDate, name, studentId) {
 // ─────────────────────────────────────────────────────────────────────────────
 function getRouting(day) {
   if (day === '화요일') return { professorName: '허재영 교수님', location: '광개토관 312호' };
-  return { professorName: '김용관 대우교수님', location: '광개토관 3층 CDC실 팀플룸' };
+  return { professorName: '김용관 교수님', location: '광개토관 3층 CDC실 팀플룸' };
 }
 
 function getSheet() {
